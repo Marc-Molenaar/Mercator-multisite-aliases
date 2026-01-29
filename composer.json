@@ -8,13 +8,20 @@
 	"license": "GPL-2.0+",
 	"authors": [
 		{
-			"name":"Human Made Limited",
-			"email":"support@humanmade.co.uk",
-			"homepage":"http://hmn.md/"
+			"name": "Human Made Limited",
+			"email": "support@humanmade.co.uk",
+			"homepage": "https://hmn.md/"
+		},
+		{
+			"name": "Marc Molenaar",
+			"email": "marc@marcmolenaar.com",
+			"homepage": "https://github.com/Marc-Molenaar",
+			"role": "PHP 8 compatibility updates"
 		}
 	],
 	"type": "wordpress-muplugin",
 	"require": {
-		"composer/installers": "~1.0 || ~2.0"
+		"php": "^8.0",
+		"composer/installers": "~1.0"
 	 }
 }

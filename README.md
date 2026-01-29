@@ -1,27 +1,11 @@
-<table width="100%">
-	<tr>
-		<td align="left" width="70">
-			<strong>Mercator</strong><br />
-			WordPress multisite domain mapping for the modern era.
-		</td>
-		<td align="right" width="20%">
-			<a href="https://travis-ci.org/humanmade/Mercator">
-				<img src="https://travis-ci.org/humanmade/Mercator.svg?branch=master" alt="Build status">
-			</a>
-			<a href="http://codecov.io/github/humanmade/Mercator?branch=master">
-				<img src="http://codecov.io/github/humanmade/Mercator/coverage.svg?branch=master" alt="Coverage via codecov.io" />
-			</a>
-		</td>
-	</tr>
-	<tr>
-		<td>
-			A <strong><a href="https://hmn.md/">Human Made</a></strong> project. Maintained by @rmccue.
-		</td>
-		<td align="center">
-			<img src="https://hmn.md/content/themes/hmnmd/assets/images/hm-logo.svg" width="100" />
-		</td>
-	</tr>
-</table>
+<p><h1>Mercator - Multisite Aliases - PHP 8</h1><br />
+			WordPress multisite domain mapping for the modern era.</p>
+
+<p>
+    A <strong><a href="https://hmn.md/">Human Made</a></strong> project. Maintained by @rmccue & @marc-molenaar.
+</p>
+
+<hr />
 
 Mercator is a domain mapping plugin for the New World. Using new features
 included with WordPress 3.9 and later, Mercator builds on the new multisite
@@ -29,9 +13,15 @@ features and abilities to improve your world.
 
 Stop using outdated practices, and start making sense.
 
+## PHP 8 Optimization
+This fork has been updated for modern PHP 8 environments. Deprecated PHP
+functions have been removed, stricter typing has been introduced where
+possible, and overall compatibility has been audited so the plugin runs
+smoothly under PHP 8+. All of these optimizations were implemented and are
+maintained by Marc-Molenaar.
+
 ## Requirements
-Mercator requires WordPress 3.9 or newer for the new sunrise processes. Mercator
-also requires PHP 5.3+ due to the use of namespaced code.
+Mercator requires WordPress 4.6 or newer for the new sunrise processes and removal of deprecated functions.
 
 ## What is Domain Mapping?
 When setting up a Multisite install, the network is configured to create sites either as subdomains of the root site (e.g. `subsite.network.com`) or subfolders (e.g. `network.com/subsite`).
@@ -83,7 +73,7 @@ Mercator is licensed under the GPLv2 or later.
 ## Credits
 Created by Human Made for high volume and large-scale sites, such as [Happytables](http://happytables.com/). We run Mercator on sites with millions of monthly page views, and thousands of sites.
 
-Written and maintained by [Ryan McCue](https://github.com/rmccue). Thanks to all our [contributors](https://github.com/humanmade/Mercator/graphs/contributors).
+Written and maintained by [Ryan McCue](https://github.com/rmccue) & [Marc Molenaar](https://github.com/marc-molenaar). Thanks to all our [contributors](https://github.com/humanmade/Mercator/graphs/contributors).
 
 Mercator builds on concepts from [WPMU Domain Mapping][], written by Donncha O'Caoimh, Ron Rennick, and contributors.
 

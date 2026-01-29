@@ -1,7 +1,9 @@
 <?php
 namespace Mercator;
 
+use stdClass;
 use WP_Error;
+use WP_Site;
 
 /**
  * Mapping object
@@ -14,21 +16,21 @@ class Mapping {
 	 *
 	 * @var int
 	 */
-	protected $site;
+	protected int $site;
 
 	/**
 	 * Mapping data
 	 *
-	 * @var array
+	 * @var stdClass
 	 */
-	protected $data;
+	protected stdClass $data;
 
 	/**
 	 * Constructor
 	 *
-	 * @param array $data Mapping data
+	 * @param stdClass $data Mapping data
 	 */
-	protected function __construct( $data ) {
+	protected function __construct(stdClass $data ) {
 		$this->site = $data->blog_id;
 		$this->data = $data;
 	}
@@ -40,7 +42,7 @@ class Mapping {
 	 * when this object is cloned.
 	 */
 	public function __clone() {
-		$this->data = clone( $this->data );
+		$this->data = clone $this->data;
 	}
 
 	/**
@@ -48,7 +50,8 @@ class Mapping {
 	 *
 	 * @return int Mapping ID
 	 */
-	public function get_id() {
+	public function get_id(): int
+    {
 		return absint( $this->data->id );
 	}
 
@@ -57,16 +60,18 @@ class Mapping {
 	 *
 	 * @return boolean
 	 */
-	public function is_active() {
+	public function is_active(): bool
+    {
 		return $this->data->active == 1;
 	}
 
 	/**
 	 * Get site object
 	 *
-	 * @return stdClass|boolean {@see get_blog_details}
+	 * @return WP_Site {@see get_blog_details}
 	 */
-	public function get_site() {
+	public function get_site(): WP_Site
+    {
 		return get_blog_details( $this->site, false );
 	}
 
@@ -75,7 +80,8 @@ class Mapping {
 	 *
 	 * @return int Site ID
 	 */
-	public function get_site_id() {
+	public function get_site_id(): int
+    {
 		return absint( $this->site );
 	}
 
@@ -84,29 +90,32 @@ class Mapping {
 	 *
 	 * @return string
 	 */
-	public function get_domain() {
+	public function get_domain(): string
+    {
 		return $this->data->domain;
 	}
 
-	/**
-	 * Set whether the mapping is active
-	 *
-	 * @param bool $active Should the mapping be active? (True for active, false for inactive)
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function set_active( $active ) {
+    /**
+     * Set whether the mapping is active
+     *
+     * @param bool $active Should the mapping be active? (True for active, false for inactive)
+     * @return WP_Error|bool|Mapping|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function set_active(bool $active ): WP_Error|bool|Mapping|null
+    {
 		$data = array(
-			'active' => (bool) $active,
+			'active' => $active,
 		);
 		return $this->update( $data );
 	}
 
-	/**
-	 * Make this mapping the primary domain, eg. set the homeurl for the site
-	 *
-	 * @return bool|\WP_Error True if we created the old mapping or WP_Error if an error occurred
-	 */
-	public function make_primary() {
+    /**
+     * Make this mapping the primary domain, eg. set the homeurl for the site
+     *
+     * @return WP_Error|bool|Mapping|null True if we created the old mapping or WP_Error if an error occurred
+     */
+	public function make_primary(): WP_Error | bool | Mapping | null
+    {
 		// Get current site details to update
 		$site = $this->get_site();
 
@@ -117,7 +126,7 @@ class Mapping {
 			return $mapping;
 		}
 
-		// Set the new home and siteurl etc to the current mapping
+		// Set the new home and siteurl etc. to the current mapping
 		update_blog_details( $site->blog_id, array(
 			'domain' => $this->get_domain(),
 		) );
@@ -140,28 +149,30 @@ class Mapping {
 		return true;
 	}
 
-	/**
-	 * Set the domain for the mapping
-	 *
-	 * @param string $domain Domain name
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function set_domain( $domain ) {
+    /**
+     * Set the domain for the mapping
+     *
+     * @param string $domain Domain name
+     * @return WP_Error|bool|Mapping|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function set_domain(string $domain ): WP_Error|bool|Mapping|null
+    {
 		$data = array(
 			'domain' => $domain,
 		);
 		return $this->update( $data );
 	}
 
-	/**
-	 * Update the mapping
-	 *
-	 * See also, {@see set_domain} and {@see set_active} as convenience methods.
-	 *
-	 * @param array|stdClass $data Mapping fields (associative array or object properties)
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function update( $data ) {
+    /**
+     * Update the mapping
+     *
+     * See also, {@see set_domain} and {@see set_active} as convenience methods.
+     *
+     * @param array|stdClass $data Mapping fields (associative array or object properties)
+     * @return WP_Error|bool|Mapping|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function update(array|stdClass $data ): WP_Error|bool|Mapping|null
+    {
 		global $wpdb;
 
 		$data = (array) $data;
@@ -177,7 +188,7 @@ class Mapping {
 			}
 			if ( ! empty( $existing ) && $existing->get_site_id() !== $data['site'] ) {
 				// Domain exists already and points to another site
-				return new \WP_Error( 'mercator.mapping.domain_exists' );
+				return new WP_Error( 'mercator.mapping.domain_exists' );
 			}
 
 			$fields['domain'] = $data['domain'];
@@ -201,7 +212,7 @@ class Mapping {
 		$where_format = array( '%d' );
 		$result = $wpdb->update( $wpdb->dmtable, $fields, $where, $formats, $where_format );
 		if ( empty( $result ) && ! empty( $wpdb->last_error ) ) {
-			return new \WP_Error( 'mercator.mapping.update_failed' );
+			return new WP_Error( 'mercator.mapping.update_failed' );
 		}
 
 		$old_mapping = clone( $this );
@@ -231,7 +242,8 @@ class Mapping {
 	 *
 	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
 	 */
-	public function delete() {
+	public function delete(): WP_Error|bool
+    {
 		global $wpdb;
 
 		$where = array(
@@ -240,7 +252,7 @@ class Mapping {
 		$where_format = array( '%d' );
 		$result = $wpdb->delete( $wpdb->dmtable, $where, $where_format );
 		if ( empty( $result ) ) {
-			return new \WP_Error( 'mercator.mapping.delete_failed' );
+			return new WP_Error( 'mercator.mapping.delete_failed' );
 		}
 
 		// Update the cache
@@ -265,7 +277,8 @@ class Mapping {
 	 * @param stdClass $data Raw mapping data
 	 * @return Mapping
 	 */
-	protected static function to_instance( $data ) {
+	protected static function to_instance(stdClass $data ): Mapping
+    {
 		return new static( $data );
 	}
 
@@ -273,9 +286,10 @@ class Mapping {
 	 * Convert list of data to Mapping instances
 	 *
 	 * @param stdClass[] $data Raw mapping rows
-	 * @return Mapping[] Array of Mapping objects
+	 * @return Mapping[]
 	 */
-	protected static function to_instances( $data ) {
+	protected static function to_instances(array $data ): array
+    {
 		return array_map( array( get_called_class(), 'to_instance' ), $data );
 	}
 
@@ -285,7 +299,8 @@ class Mapping {
 	 * @param int|Mapping $mapping Mapping ID or instance
 	 * @return Mapping|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
 	 */
-	public static function get( $mapping ) {
+	public static function get(int|Mapping $mapping ): WP_Error|Mapping|null
+    {
 		global $wpdb;
 
 		// Allow passing a site object in
@@ -294,7 +309,7 @@ class Mapping {
 		}
 
 		if ( ! is_numeric( $mapping ) ) {
-			return new \WP_Error( 'mercator.mapping.invalid_id' );
+			return new WP_Error( 'mercator.mapping.invalid_id' );
 		}
 
 		$mapping = absint( $mapping );
@@ -311,13 +326,14 @@ class Mapping {
 		return new static( $mapping );
 	}
 
-	/**
-	 * Get mapping by site ID
-	 *
-	 * @param int|stdClass $site Site ID, or site object from {@see get_blog_details}
-	 * @return Mapping[]|WP_Error|null Array of Mapping objects on success, WP_Error if error occurred, or null if no mapping found
-	 */
-	public static function get_by_site( $site ) {
+    /**
+     * Get mapping by site ID
+     *
+     * @param int|stdClass $site Site ID, or site object from {@see get_blog_details}
+     * @return WP_Error|array|null Mapping on success, WP_Error if error occurred, or null if no mapping found
+     */
+	public static function get_by_site(int|stdClass $site ): WP_Error|array|null
+    {
 		global $wpdb;
 
 		// Allow passing a site object in
@@ -326,7 +342,7 @@ class Mapping {
 		}
 
 		if ( ! is_numeric( $site ) ) {
-			return new \WP_Error( 'mercator.mapping.invalid_id' );
+			return new WP_Error( 'mercator.mapping.invalid_id' );
 		}
 
 		$site = absint( $site );
@@ -354,10 +370,11 @@ class Mapping {
 	/**
 	 * Get mapping by domain(s)
 	 *
-	 * @param string|array $domains Domain(s) to match against
+	 * @param array|string $domains Domain(s) to match against
 	 * @return Mapping|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
 	 */
-	public static function get_by_domain( $domains ) {
+	public static function get_by_domain(array|string $domains ): WP_Error|Mapping|null
+    {
 		global $wpdb;
 
 		$domains = (array) $domains;
@@ -382,7 +399,7 @@ class Mapping {
 		$placeholders_in = implode( ',', $placeholders );
 
 		// Prepare the query
-		$query = "SELECT * FROM {$wpdb->dmtable} WHERE domain IN ($placeholders_in) ORDER BY CHAR_LENGTH(domain) DESC LIMIT 1";
+		$query = "SELECT * FROM $wpdb->dmtable WHERE domain IN ($placeholders_in) ORDER BY CHAR_LENGTH(domain) DESC LIMIT 1";
 		$query = $wpdb->prepare( $query, $domains );
 
 		// Suppress errors in case the table doesn't exist
@@ -404,31 +421,26 @@ class Mapping {
 		return new static( $mapping );
 	}
 
-	/**
-	 * Create a new domain mapping
-	 *
-	 * @param string $site   Site ID, or site object from {@see get_blog_details}
-	 * @param string $domain
-	 * @param bool   $active
-	 * @return Mapping|\WP_Error
-	 */
-	public static function create( $site, $domain, $active = false ) {
+    /**
+     * Create a new domain mapping
+     *
+     * @param string $site Site ID, or site object from {@see get_blog_details}
+     * @param string $domain
+     * @param bool $active
+     * @return WP_Error|Mapping|null
+     */
+	public static function create(string $site, string $domain, bool $active = false ): WP_Error|Mapping|null
+    {
 		global $wpdb;
 
-		// Allow passing a site object in
-		if ( is_object( $site ) && isset( $site->blog_id ) ) {
-			$site = $site->blog_id;
-		}
-
-		if ( ! is_numeric( $site ) ) {
-			return new \WP_Error( 'mercator.mapping.invalid_id' );
+        if ( ! is_numeric( $site ) ) {
+			return new WP_Error( 'mercator.mapping.invalid_id' );
 		}
 
 		$site = absint( $site );
-		$active = (bool) $active;
 
-		// Did we get a full URL?
-		if ( strpos( $domain, '://' ) !== false ) {
+        // Did we get a full URL?
+		if (str_contains($domain, '://')) {
 			// Parse just the domain out
 			$domain = parse_url( $domain, PHP_URL_HOST );
 		}
@@ -442,7 +454,7 @@ class Mapping {
 			// Domain exists already...
 			if ( $site !== $existing->get_site_id() ) {
 				// ...and points to another site
-				return new \WP_Error( 'mercator.mapping.domain_exists' );
+				return new WP_Error( 'mercator.mapping.domain_exists' );
 			}
 
 			// ...and points to this site, so nothing to do
@@ -451,7 +463,7 @@ class Mapping {
 
 		// Create the mapping!
 		$prev_errors = ! empty( $GLOBALS['EZSQL_ERROR'] ) ? $GLOBALS['EZSQL_ERROR'] : array();
-		$suppress = $wpdb->suppress_errors( true );
+		$suppress = $wpdb->suppress_errors();
 		$result = $wpdb->insert(
 			$wpdb->dmtable,
 			array(
@@ -478,7 +490,7 @@ class Mapping {
 				$wpdb->print_error( $error['error_str'] );
 			}
 
-			return new \WP_Error( 'mercator.mapping.insert_failed' );
+			return new WP_Error( 'mercator.mapping.insert_failed' );
 		}
 
 		// Ensure the cache is flushed

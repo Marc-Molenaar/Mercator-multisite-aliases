@@ -2,7 +2,9 @@
 
 namespace Mercator;
 
+use stdClass;
 use WP_Error;
+use WP_Network;
 
 /**
  * Mapping object
@@ -20,30 +22,30 @@ class Network_Mapping {
 	 *
 	 * @var int
 	 */
-	protected $id;
+	protected int $id;
 
 	/**
 	 * Site ID
 	 *
 	 * @var int
 	 */
-	protected $network;
+	protected int $network;
 
 	/**
 	 * Mapping data
 	 *
-	 * @var array
+	 * @var array|object
 	 */
-	protected $data;
+	protected array|object $data;
 
 	/**
 	 * Constructor
 	 *
-	 * @param int   $id Mapping ID
-	 * @param int   $network Network ID
+	 * @param int $id Mapping ID
+	 * @param int $network Network ID
 	 * @param array $data Mapping data
 	 */
-	protected function __construct( $id, $network, $data ) {
+	protected function __construct(int $id, int $network, array $data ) {
 		$this->id = $id;
 		$this->network = $network;
 		$this->data = (object) $data;
@@ -54,7 +56,8 @@ class Network_Mapping {
 	 *
 	 * @return int Mapping ID
 	 */
-	public function get_id() {
+	public function get_id(): int
+    {
 		return $this->id;
 	}
 
@@ -63,17 +66,19 @@ class Network_Mapping {
 	 *
 	 * @return boolean
 	 */
-	public function is_active() {
+	public function is_active(): bool
+    {
 		return $this->data->active == 1;
 	}
 
 	/**
 	 * Get network object
 	 *
-	 * @return stdClass|boolean {@see get_blog_details}
+	 * @return WP_Network {@see get_blog_details}
 	 */
-	public function get_network() {
-		return wp_get_network( $this->network );
+	public function get_network(): WP_Network
+    {
+		return get_network( $this->network );
 	}
 
 	/**
@@ -81,7 +86,8 @@ class Network_Mapping {
 	 *
 	 * @return int Network ID
 	 */
-	public function get_network_id() {
+	public function get_network_id(): int
+    {
 		return $this->network;
 	}
 
@@ -90,45 +96,49 @@ class Network_Mapping {
 	 *
 	 * @return string
 	 */
-	public function get_domain() {
+	public function get_domain(): string
+    {
 		return $this->data->domain;
 	}
 
-	/**
-	 * Set whether the mapping is active
-	 *
-	 * @param bool $active Should the mapping be active? (True for active, false for inactive)
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function set_active( $active ) {
+    /**
+     * Set whether the mapping is active
+     *
+     * @param bool $active Should the mapping be active? (True for active, false for inactive)
+     * @return WP_Error|Network_Mapping|bool|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function set_active(bool $active ): WP_Error|Network_Mapping|bool|null
+    {
 		$data = array(
-			'active' => (bool) $active,
+			'active' => $active,
 		);
 		return $this->update( $data );
 	}
 
-	/**
-	 * Set the domain for the mapping
-	 *
-	 * @param string $domain Domain name
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function set_domain( $domain ) {
+    /**
+     * Set the domain for the mapping
+     *
+     * @param string $domain Domain name
+     * @return WP_Error|Network_Mapping|bool|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function set_domain(string $domain ): WP_Error|Network_Mapping|bool|null
+    {
 		$data = array(
 			'domain' => $domain,
 		);
 		return $this->update( $data );
 	}
 
-	/**
-	 * Update the mapping
-	 *
-	 * See also, {@see set_domain} and {@see set_active} as convenience methods.
-	 *
-	 * @param array|stdClass $data Mapping fields (associative array or object properties)
-	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
-	 */
-	public function update( $data ) {
+    /**
+     * Update the mapping
+     *
+     * See also, {@see set_domain} and {@see set_active} as convenience methods.
+     *
+     * @param array|stdClass $data Mapping fields (associative array or object properties)
+     * @return WP_Error|Network_Mapping|bool|null True if we updated, false if we didn't need to, or WP_Error if an error occurred
+     */
+	public function update(array|stdClass $data ): WP_Error|Network_Mapping|bool|null
+    {
 		global $wpdb;
 
 		$data = (array) $data;
@@ -137,7 +147,7 @@ class Network_Mapping {
 		// Were we given a domain (and is it not the current one)?
 		if ( ! empty( $data['domain'] ) && $this->data->domain !== $data['domain'] ) {
 			// Did we get a full URL?
-			if ( strpos( $data['domain'], '://' ) !== false ) {
+			if (str_contains($data['domain'], '://')) {
 				// Parse just the domain out
 				$data['domain'] = parse_url( $data['domain'], PHP_URL_HOST );
 			}
@@ -196,7 +206,8 @@ class Network_Mapping {
 	 *
 	 * @return bool|WP_Error True if we updated, false if we didn't need to, or WP_Error if an error occurred
 	 */
-	public function delete() {
+	public function delete(): WP_Error|bool
+    {
 		global $wpdb;
 
 		$where = array(
@@ -221,9 +232,10 @@ class Network_Mapping {
 	 * Allows use as a callback, such as in `array_map`
 	 *
 	 * @param stdClass $row Raw mapping row
-	 * @return Mapping
-	 */
-	protected static function to_instance( $row ) {
+	 * @return Network_Mapping
+     */
+	protected static function to_instance(stdClass $row ): Network_Mapping
+    {
 		$data = unserialize( $row->meta_value );
 		return new static( $row->meta_id, $row->site_id, $data );
 	}
@@ -234,17 +246,19 @@ class Network_Mapping {
 	 * @param stdClass[] $rows Raw mapping rows
 	 * @return Mapping[]
 	 */
-	protected static function to_instances( $rows ) {
+	protected static function to_instances(array $rows ): array
+    {
 		return array_map( array( get_called_class(), 'to_instance' ), $rows );
 	}
 
-	/**
-	 * Get mapping by mapping ID
-	 *
-	 * @param int|Mapping $mapping Mapping ID or instance
-	 * @return Mapping|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
-	 */
-	public static function get( $mapping ) {
+    /**
+     * Get mapping by mapping ID
+     *
+     * @param int|Mapping $mapping Mapping ID or instance
+     * @return WP_Error|Mapping|Network_Mapping|null Mapping on success, WP_Error if error occurred, or null if no mapping found
+     */
+	public static function get(int|Mapping $mapping ): WP_Error|Mapping|Network_Mapping|null
+    {
 		global $wpdb;
 
 		// Allow passing a site object in
@@ -268,7 +282,7 @@ class Network_Mapping {
 		}
 
 		// Double-check that this is a Mercator field
-		if ( substr( $row->meta_key, 0, strlen( static::KEY_PREFIX ) ) !== static::KEY_PREFIX ) {
+		if (!str_starts_with($row->meta_key, static::KEY_PREFIX)) {
 			return new WP_Error( 'mercator.mapping.invalid_id' );
 		}
 
@@ -279,9 +293,10 @@ class Network_Mapping {
 	 * Get mapping by network ID
 	 *
 	 * @param int|stdClass $network Network ID, or network object from {@see wp_get_network}
-	 * @return Mapping|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
+	 * @return Mapping[]|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
 	 */
-	public static function get_by_network( $network ) {
+	public static function get_by_network(int|stdClass $network ): WP_Error|array|null
+    {
 		global $wpdb;
 
 		// Allow passing a network object in
@@ -315,13 +330,14 @@ class Network_Mapping {
 		return static::to_instances( $rows );
 	}
 
-	/**
-	 * Get mapping by domain(s)
-	 *
-	 * @param string|array $domains Domain(s) to match against
-	 * @return Mapping|WP_Error|null Mapping on success, WP_Error if error occurred, or null if no mapping found
-	 */
-	public static function get_by_domain( $domains ) {
+    /**
+     * Get mapping by domain(s)
+     *
+     * @param array|string $domains Domain(s) to match against
+     * @return Network_Mapping|null Mapping on success, WP_Error if error occurred, or null if no mapping found
+     */
+	public static function get_by_domain(array|string $domains ): ?Network_Mapping
+    {
 		global $wpdb;
 
 		$domains = (array) $domains;
@@ -350,7 +366,7 @@ class Network_Mapping {
 		$placeholders_in = implode( ',', $placeholders );
 
 		// Prepare the query
-		$query = "SELECT * FROM {$wpdb->sitemeta} WHERE meta_key IN ($placeholders_in) ORDER BY CHAR_LENGTH(meta_value) DESC LIMIT 1";
+		$query = "SELECT * FROM $wpdb->sitemeta WHERE meta_key IN ($placeholders_in) ORDER BY CHAR_LENGTH(meta_value) DESC LIMIT 1";
 		$query = $wpdb->prepare( $query, $keys );
 
 		// Suppress errors in case the table doesn't exist
@@ -380,10 +396,11 @@ class Network_Mapping {
 	/**
 	 * Get mapping by domain, but filter to ensure only active mapped domains are returned
 	 *
-	 * @param string|array $domains Domain(s) to match against
-	 * @return Mapping|null Mapping on success, or null if no mapping found
+	 * @param array|string $domains Domain(s) to match against
+	 * @return Network_Mapping|null Mapping on success, or null if no mapping found
 	 */
-	public static function get_active_by_domain( $domains ) {
+	public static function get_active_by_domain(array|string $domains ): ?Network_Mapping
+    {
 		$mapped = array();
 
 		foreach ( $domains as $domain ) {
@@ -411,7 +428,8 @@ class Network_Mapping {
 	 * @param stdClass $b Second row
 	 * @return int <0 if $a is "less" (shorter), 0 if equal, >0 if $a is "more" (longer)
 	 */
-	protected static function sort_rows_by_domain_length( $a, $b ) {
+	protected static function sort_rows_by_domain_length(stdClass $a, stdClass $b ): int
+    {
 		$a_data = unserialize( $a->meta_value );
 		$b_data = unserialize( $b->meta_value );
 
@@ -420,13 +438,16 @@ class Network_Mapping {
 		return strlen( $a_data->domain ) - strlen( $b_data->domain );
 	}
 
-	/**
-	 * Create a new domain mapping
-	 *
-	 * @param $site Site ID, or site object from {@see get_blog_details}
-	 * @return bool
-	 */
-	public static function create( $network, $domain, $active = false ) {
+    /**
+     * Create a new domain mapping
+     *
+     * @param $network
+     * @param $domain
+     * @param bool $active
+     * @return WP_Error|Network_Mapping|null
+     */
+	public static function create($network, $domain, bool $active = false ): WP_Error|Network_Mapping|null
+    {
 		global $wpdb;
 
 		// Allow passing a site object in
@@ -439,10 +460,9 @@ class Network_Mapping {
 		}
 
 		$network = absint( $network );
-		$active = (bool) $active;
 
 		// Did we get a full URL?
-		if ( strpos( $domain, '://' ) !== false ) {
+		if (str_contains($domain, '://')) {
 			// Parse just the domain out
 			$domain = parse_url( $domain, PHP_URL_HOST );
 		}
@@ -501,7 +521,8 @@ class Network_Mapping {
 	 * @param string $domain Domain name
 	 * @return string Meta key corresponding to the domain
 	 */
-	protected static function key_for_domain( $domain ) {
+	protected static function key_for_domain(string $domain ): string
+    {
 		return static::KEY_PREFIX . sha1( $domain );
 	}
 }

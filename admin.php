@@ -7,8 +7,8 @@
 
 namespace Mercator\Admin;
 
-use Mercator\Mapping;
-use WP_Error;
+use JetBrains\PhpStorm\NoReturn;use Mercator\Mapping;
+use WP_Error;use const Mercator\VERSION;
 
 add_filter( 'wpmu_blogs_columns',            __NAMESPACE__ . '\\add_site_list_column' );
 add_action( 'manage_sites_custom_column',    __NAMESPACE__ . '\\output_site_list_column', 10, 2 );
@@ -24,7 +24,7 @@ add_filter( 'plugin_row_meta',               __NAMESPACE__ . '\\output_sunrise_d
  * @param array $columns Column map of ID => title
  * @return array
  */
-function add_site_list_column( $columns ) {
+function add_site_list_column( array $columns ): array {
 	$columns['mercator_aliases'] = __( 'Aliases', 'mercator' );
 	return $columns;
 }
@@ -35,19 +35,15 @@ function add_site_list_column( $columns ) {
  * @param string $column Column ID
  * @param int    $site_id Site ID
  */
-function output_site_list_column( $column, $site_id ) {
-	switch ( $column ) {
-		case 'mercator_aliases':
-			$mappings = Mapping::get_by_site( $site_id );
-			if ( ! empty( $mappings ) ) {
-				foreach ( $mappings as $mapping ) {
-					// Kinda horrible formatting, but matches the existing
-					echo esc_html( $mapping->get_domain() ) . '<br />';
-				}
-			}
+function output_site_list_column( string $column, int $site_id ): void {
+	if ($column == 'mercator_aliases') {$mappings = Mapping::get_by_site( $site_id );
 
-			break;
-	}
+    if ( ! empty( $mappings ) ) {
+        foreach ( $mappings as $mapping ) {
+            // Kinda horrible formatting, but matches the existing
+            echo esc_html( $mapping->get_domain() ) . '<br />';
+        }
+    }}
 }
 
 /**
@@ -56,7 +52,7 @@ function output_site_list_column( $column, $site_id ) {
  * Outputs the link, then moves it into place using JS, as there are no hooks to
  * speak of.
  */
-function maybe_output_site_tab() {
+function maybe_output_site_tab(): void {
 	if ( ! is_network_admin() ) {
 		return;
 	}
@@ -87,7 +83,7 @@ function maybe_output_site_tab() {
  * @param int   $id Site ID
  * @param array $messages Messages to display
  */
-function output_page_header( $id, $messages = array() ) {
+function output_page_header( int $id, array $messages = array() ):void {
 	global $pagenow;
 
 	$site_url_no_http = preg_replace( '#^http(s)?://#', '', get_blogaddress_by_id( $id ) );
@@ -112,7 +108,7 @@ function output_page_header( $id, $messages = array() ) {
 
 <div class="wrap">
 	<h1 id="edit-site">
-		<?php 
+		<?php
 			echo wp_kses( $title_site_url_linked, array(
 				'a' => array(
 					'href' => array(),
@@ -143,7 +139,7 @@ function output_page_header( $id, $messages = array() ) {
 		),
 	);
 
-	foreach ( $tabs as $tab_id => $tab ) {
+	foreach ( $tabs as $tab ) {
 		$class = ( $pagenow === $tab['url'] ) ? ' nav-tab-active' : '';
 		printf ( '<a href="%1$s" class="nav-tab %2$s">%3$s</a>', esc_url( $tab['url'] . '?id=' . $id ), esc_attr( $class ), esc_html( $tab['label'] ) );
 	}
@@ -172,7 +168,7 @@ function output_page_header( $id, $messages = array() ) {
 /**
  * Output the admin page footer
  */
-function output_page_footer() {
+function output_page_footer(): void {
 	echo '</div>';
 
 	require_once( ABSPATH . 'wp-admin/admin-footer.php' );
@@ -187,8 +183,10 @@ function output_page_footer() {
  * @param int    $id Site ID
  * @param string $action Action to perform
  */
-function handle_list_page_submit( $id, $action ) {
-	check_admin_referer( 'mercator-aliases-bulk-' . $id );
+#[NoReturn]
+function handle_list_page_submit( int $id, string $action ): void {
+	global $parent_file;
+    check_admin_referer( 'mercator-aliases-bulk-' . $id );
 
 	$sendback = remove_query_arg( array( 'did_action', 'mappings', '_wpnonce' ), wp_get_referer() );
 	if ( ! $sendback ) {
@@ -253,7 +251,7 @@ function handle_list_page_submit( $id, $action ) {
 			break;
 
 		default:
-			do_action_ref_array( "mercator_aliases_bulk_action-{$action}", array( $mappings, &$processed, $action ) );
+			do_action_ref_array( "mercator_aliases_bulk_action-$action", array( $mappings, &$processed, $action ) );
 			break;
 	}
 
@@ -267,7 +265,7 @@ function handle_list_page_submit( $id, $action ) {
 /**
  * Output alias editing page
  */
-function output_list_page() {
+function output_list_page(): void {
 
 	$id = isset( $_REQUEST['id'] ) ? intval( $_REQUEST['id'] ) : 0;
 
@@ -290,12 +288,11 @@ function output_list_page() {
 
 	$bulk_action = $wp_list_table->current_action();
 	if ( $bulk_action ) {
-		$messages = handle_list_page_submit( $id, $bulk_action );
-	}
+	    handle_list_page_submit( $id, $bulk_action );
+    }
 
-	$pagenum = $wp_list_table->get_pagenum();
-
-	$wp_list_table->prepare_items( $id );
+	$wp_list_table->get_pagenum();
+	$wp_list_table->prepare_items();
 
 	// Add messages for bulk actions
 	if ( ! empty( $_REQUEST['did_action'] ) ) {
@@ -358,7 +355,7 @@ function output_list_page() {
  * @param boolean $check_permission Should we check that the user can edit the network?
  * @return array|WP_Error Validated parameters on success, WP_Error otherwise
  */
-function validate_alias_parameters( $params, $check_permission = true ) {
+function validate_alias_parameters( array $params, bool $check_permission = true ): WP_Error|array {
 	$valid = array();
 
 	// Validate domain
@@ -388,7 +385,7 @@ function validate_alias_parameters( $params, $check_permission = true ) {
 	}
 
 	// Validate active flag
-	$valid['active'] = empty( $params['active'] ) ? false : true;
+	$valid['active'] = !empty( $params['active'] );
 
 	return $valid;
 }
@@ -398,7 +395,7 @@ function validate_alias_parameters( $params, $check_permission = true ) {
  *
  * @return array|null List of errors. Issues a redirect and exits on success.
  */
-function handle_edit_page_submit( $id, $mapping ) {
+function handle_edit_page_submit( $id, $mapping ): ?array {
 	$messages = array();
 	if ( empty( $mapping ) ) {
 		$did_action = 'add';
@@ -452,7 +449,7 @@ function handle_edit_page_submit( $id, $mapping ) {
 /**
  * Output alias editing page
  */
-function output_edit_page() {
+function output_edit_page(): void {
 
 	$id = isset( $_REQUEST['id'] ) ? intval( $_REQUEST['id'] ) : 0;
 
@@ -552,17 +549,17 @@ function output_edit_page() {
  * @param string $status Status of the plugin
  * @return array Modified meta links
  */
-function output_sunrise_dropin_note( $meta, $file, $data, $status ) {
+function output_sunrise_dropin_note( array $meta, string $file, array $data, string $status ): array {
 	if ( $file !== 'sunrise.php' || $status !== 'dropins' ) {
 		return $meta;
 	}
 
 	$note = '<em>' . wp_kses( sprintf(
-		__( 'Enhanced by <a href="%1$s" title="%2$s">Mercator</a>', 'mercator' ),
+		__( 'Domain alias support with <a href="%1$s" title="%2$s">Mercator</a> |  Created by: <a href="https://humanmade.com">Human Made Limited</a> & <a href="https://marcmolenaar.com">Marc Molenaar</a>', 'mercator' ),
 		'https://github.com/humanmade/Mercator',
 		sprintf(
 			esc_html__( 'Version %s', 'mercator' ),
-			\Mercator\VERSION
+			VERSION
 		)
 	), array(
 		'a' => array(

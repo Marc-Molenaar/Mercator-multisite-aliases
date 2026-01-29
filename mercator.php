@@ -9,28 +9,18 @@
 
 namespace Mercator;
 
-use WP_CLI;
+use WP_Site;
 
 /**
  * Current version of Mercator.
  */
-const VERSION = '1.0.3';
+const VERSION = '1.1.0';
 
 require __DIR__ . '/class-mapping.php';
 require __DIR__ . '/class-network-mapping.php';
 require __DIR__ . '/multinetwork.php';
-require __DIR__ . '/sso.php';
-require __DIR__ . '/sso-multinetwork.php';
 
-if ( defined( 'WP_CLI' ) && WP_CLI ) {
-	require_once __DIR__ . '/inc/cli/class-mapping-command.php';
-	require_once __DIR__ . '/inc/cli/class-network-mapping-command.php';
-}
-
-// Allow skipping bootstrap checks if you *really* know what you're doing.
-// This lets Mercator run after muplugins_loaded, which you might need if you're
-// doing unit tests.
-if ( defined( 'MERCATOR_SKIP_CHECKS' ) && MERCATOR_SKIP_CHECKS ) {
+if ( defined( 'MERCATOR_SKIP_CHECKS' ) && constant( 'MERCATOR_SKIP_CHECKS' ) ) {
 	startup();
 } else {
 	run_preflight();
@@ -42,7 +32,7 @@ if ( defined( 'MERCATOR_SKIP_CHECKS' ) && MERCATOR_SKIP_CHECKS ) {
  * Checks that we can actually run Mercator, then attaches the relevant actions
  * and filters to make it useful.
  */
-function run_preflight() {
+function run_preflight(): void {
 	// Are we installing? Bail if so.
 	if ( defined( 'WP_INSTALLING' ) ) {
 		return;
@@ -76,7 +66,7 @@ function run_preflight() {
  *
  * Imagine this as attaching the strings to the puppet.
  */
-function startup() {
+function startup(): void {
 	// Define the table variables
 	if ( empty( $GLOBALS['wpdb']->dmtable ) ) {
 		$GLOBALS['wpdb']->dmtable = $GLOBALS['wpdb']->base_prefix . 'domain_mapping';
@@ -89,14 +79,8 @@ function startup() {
 	// Actually hook in!
 	add_filter( 'pre_get_site_by_path', __NAMESPACE__ . '\\check_domain_mapping', 10, 2 );
 	add_action( 'admin_init', __NAMESPACE__ . '\\load_admin', -100 );
-	add_action( 'wp_uninitialize_site', __NAMESPACE__ . '\\clear_mappings_on_delete' );
+	add_action( 'delete_blog', __NAMESPACE__ . '\\clear_mappings_on_delete' );
 	add_action( 'muplugins_loaded', __NAMESPACE__ . '\\register_mapped_filters', -10 );
-
-	// Add CLI commands
-	if ( defined( 'WP_CLI' ) && WP_CLI ) {
-		WP_CLI::add_command( 'mercator mapping', __NAMESPACE__ . '\\CLI\\Mapping_Command' );
-		WP_CLI::add_command( 'mercator network-mapping', __NAMESPACE__ . '\\CLI\\Network_Mapping_Command' );
-	}
 
 	/**
 	 * Check the table exists and that we're up to date.
@@ -116,7 +100,7 @@ function startup() {
  *
  * @param string $message Message to use in the warning.
  */
-function warn_with_message( $message ) {
+function warn_with_message( string $message ): void {
 	add_action( 'all_admin_notices', function () use ( $message ) {
 		echo '<div class="error"><p>' . esc_html( $message ) . '</p></div>';
 	} );
@@ -125,18 +109,18 @@ function warn_with_message( $message ) {
 /**
  * Check if a domain has a mapping available
  *
- * @param stdClass|null $site Site object if already found, null otherwise
- * @param string        $domain Domain we're looking for
- * @return stdClass|null Site object if already found, null otherwise
+ * @param WP_Site|bool|null $site Site object if already found, null otherwise
+ * @param string            $domain Domain we're looking for
+ * @return WP_Site|bool|null Site object if already found, null otherwise
  */
-function check_domain_mapping( $site, $domain ) {
+function check_domain_mapping(WP_Site|bool|null $site, string $domain ): WP_Site|bool|null {
 	// Have we already matched? (Allows other plugins to match first)
 	if ( ! empty( $site ) ) {
 		return $site;
 	}
 
 	// Grab both WWW and no-WWW
-	if ( strpos( $domain, 'www.' ) === 0 ) {
+	if (str_starts_with($domain, 'www.')) {
 		$www = $domain;
 		$nowww = substr( $domain, 4 );
 	} else {
@@ -184,7 +168,7 @@ function check_domain_mapping( $site, $domain ) {
  *
  * @return string|boolean One of 'exists' (table already existed), 'created' (table was created), or false if could not be created
  */
-function check_table() {
+function check_table(): string|false {
 	global $wpdb;
 
 	if ( get_site_option( 'mercator.db.version' ) === VERSION ) {
@@ -219,9 +203,6 @@ function check_table() {
 	$result = dbDelta( $schema );
 	$wpdb->ms_global_tables[] = 'domain_mapping';
 
-	// Update db version option.
-	update_site_option( 'mercator.db.version', VERSION );
-	
 	if ( empty( $result ) ) {
 		// No changes, database already exists and is up-to-date
 		return 'exists';
@@ -229,6 +210,9 @@ function check_table() {
 
 	// utf8mb4 conversion.
 	maybe_convert_table_to_utf8mb4( $wpdb->dmtable );
+
+	// Update db version option.
+	update_site_option( 'mercator.db.version', VERSION );
 
 	return 'created';
 }
@@ -239,7 +223,7 @@ function check_table() {
  * We do this here rather than just including it to avoid extra load on
  * non-admin pages.
  */
-function load_admin() {
+function load_admin(): void {
 	require_once __DIR__ . '/admin.php';
 	require_once __DIR__ . '/inc/admin/class-alias-list-table.php';
 }
@@ -247,10 +231,10 @@ function load_admin() {
 /**
  * Clear mappings for a site when it's deleted
  *
- * @param WP_Site $site Deleted site object.
+ * @param int $site_id Site being deleted
  */
-function clear_mappings_on_delete( $site ) {
-	$mappings = Mapping::get_by_site( $site->id );
+function clear_mappings_on_delete( int $site_id ): void {
+	$mappings = Mapping::get_by_site( $site_id );
 
 	if ( empty( $mappings ) ) {
 		return;
@@ -263,7 +247,7 @@ function clear_mappings_on_delete( $site ) {
 			$message = sprintf(
 				__( 'Unable to delete mapping %1$d for site %2$d', 'mercator' ),
 				$mapping->get_id(),
-				$site->id
+				$site_id
 			);
 			trigger_error( $message, E_USER_WARNING );
 		}
@@ -273,7 +257,7 @@ function clear_mappings_on_delete( $site ) {
 /**
  * Register filters for URLs, if we've mapped
  */
-function register_mapped_filters() {
+function register_mapped_filters(): void {
 	$current_site = $GLOBALS['current_blog'];
 	$real_domain = $current_site->domain;
 	$domain = $_SERVER['HTTP_HOST'];
@@ -284,7 +268,7 @@ function register_mapped_filters() {
 	}
 
 	// Grab both WWW and no-WWW
-	if ( strpos( $domain, 'www.' ) === 0 ) {
+	if ( str_starts_with( $domain, 'www.' ) ) {
 		$www = $domain;
 		$nowww = substr( $domain, 4 );
 	} else {
@@ -317,7 +301,7 @@ function register_mapped_filters() {
  * @param int|null    $site_id Blog ID, or null for the current blog.
  * @return string Mangled URL
  */
-function mangle_url( $url, $path, $orig_scheme, $site_id = 0 ) {
+function mangle_url( string $url, string $path, ?string $orig_scheme, ?int $site_id = null ): string {
 	if ( empty( $site_id ) ) {
 		$site_id = get_current_blog_id();
 	}

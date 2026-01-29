@@ -9,15 +9,24 @@ namespace Mercator\Admin;
 
 use Mercator\Mapping;
 use WP_List_Table;
+use function Mercator\warn_with_message;
 
 /**
  * List table for aliases
  */
 class Alias_List_Table extends WP_List_Table {
 	/**
+	 * Cached bulk actions list; WP_List_Table only defines it via magic.
+	 *
+	 * @var array|null
+	 */
+	protected ?array $_actions = null;
+
+	/**
 	 * Prepare items for the list table
 	 */
-	public function prepare_items() {
+	public function prepare_items(): void
+    {
 		$this->items = array();
 
 		if ( empty( $this->_args['site_id'] ) ) {
@@ -27,7 +36,7 @@ class Alias_List_Table extends WP_List_Table {
 		$id = $this->_args['site_id'];
 		$mappings = Mapping::get_by_site( $id );
 		if ( is_wp_error( $mappings ) ) {
-			\Mercator\warn_with_message( __( 'Could not fetch aliases for the site. This may indicate a database error.', 'mercator' ) );
+			warn_with_message( __( 'Could not fetch aliases for the site. This may indicate a database error.', 'mercator' ) );
 		}
 		if ( ! empty( $mappings ) ) {
 			$this->items = $mappings;
@@ -39,7 +48,8 @@ class Alias_List_Table extends WP_List_Table {
 	 *
 	 * @return array Map of column ID => title
 	 */
-	public function get_columns() {
+	public function get_columns(): array
+    {
 		return array(
 			'cb'     => '<input type="checkbox" />',
 			'domain' => _x( 'Domain', 'mercator' ),
@@ -56,7 +66,8 @@ class Alias_List_Table extends WP_List_Table {
 	 *
 	 * @return array
 	 */
-	protected function get_bulk_actions() {
+	protected function get_bulk_actions(): array
+    {
 		$actions = array(
 			'activate'   => _x( 'Activate', 'mercator' ),
 			'deactivate' => _x( 'Deactivate', 'mercator' ),
@@ -75,7 +86,8 @@ class Alias_List_Table extends WP_List_Table {
 	 * @param string $which The location of the bulk actions: 'top' or 'bottom'.
 	 *                      This is designated as optional for backwards-compatibility.
 	 */
-	protected function bulk_actions( $which = '' ) {
+	protected function bulk_actions( $which = '' ): void
+    {
 		if ( is_null( $this->_actions ) ) {
 			$no_new_actions = $this->_actions = $this->get_bulk_actions();
 			/**
@@ -129,7 +141,8 @@ class Alias_List_Table extends WP_List_Table {
 	 *
 	 * @return string|bool The action name or False if no action was selected
 	 */
-	public function current_action() {
+	public function current_action(): bool|string
+    {
 		if ( isset( $_REQUEST['bulk_action'] ) && -1 !== (int) $_REQUEST['bulk_action'] ) {
 			return $_REQUEST['bulk_action'];
 		}
@@ -148,9 +161,8 @@ class Alias_List_Table extends WP_List_Table {
 	 *
 	 * @param string $which Which tablenav to use (top/bottom)
 	 */
-	protected function extra_tablenav( $which ) {
-		global $status;
-
+	protected function extra_tablenav( $which ): void
+    {
 		if ( $which !== 'top' ) {
 			return;
 		}
@@ -170,14 +182,15 @@ class Alias_List_Table extends WP_List_Table {
 	/**
 	 * Get cell value for the checkbox column
 	 *
-	 * @param Mapping $mapping Current mapping item
+	 * @param Mapping $item Current mapping item
 	 * @return string HTML for the cell
 	 */
-	protected function column_cb( $mapping ) {
-		return '<label class="screen-reader-text" for="cb-select-' . $mapping->get_id() . '">'
-			. sprintf( __( 'Select %s' ), esc_html( $mapping->get_domain() ) ) . '</label>'
-			. '<input type="checkbox" name="mappings[]" value="' . esc_attr( $mapping->get_id() )
-			. '" id="cb-select-' . esc_attr( $mapping->get_id() ) . '" />';
+	protected function column_cb($item ): string
+    {
+		return '<label class="screen-reader-text" for="cb-select-' . $item->get_id() . '">'
+			. sprintf( __( 'Select %s' ), esc_html( $item->get_domain() ) ) . '</label>'
+			. '<input type="checkbox" name="mappings[]" value="' . esc_attr( $item->get_id() )
+			. '" id="cb-select-' . esc_attr( $item->get_id() ) . '" />';
 	}
 
 	/**
@@ -186,9 +199,10 @@ class Alias_List_Table extends WP_List_Table {
 	 * @param Mapping $mapping Current mapping item
 	 * @return string HTML for the cell
 	 */
-	protected function column_domain( $mapping ) {
+	protected function column_domain(Mapping $mapping ): string
+    {
 		$domain = esc_html( $mapping->get_domain() );
-		if ( substr( $domain, 0, 4 ) === 'www.' ) {
+		if ( str_starts_with( $domain, 'www.' ) ) {
 			$domain = substr( $domain, 4 );
 		}
 
@@ -228,7 +242,7 @@ class Alias_List_Table extends WP_List_Table {
 			'delete' => sprintf( '<a href="%s" class="submitdelete">%s</a>', esc_url( $delete_link ), esc_html__( 'Delete', 'mercator' ) ),
 		);
 		$actions = apply_filters( 'mercator_alias_actions', $actions, $mapping );
-		$action_html = $this->row_actions( $actions, false );
+		$action_html = $this->row_actions( $actions );
 
 		return '<strong>' . $domain . '</strong>' . $action_html;
 	}
@@ -239,7 +253,8 @@ class Alias_List_Table extends WP_List_Table {
 	 * @param Mapping $mapping Current mapping item
 	 * @return string HTML for the cell
 	 */
-	protected function column_active( $mapping ) {
+	protected function column_active(Mapping $mapping ): string
+    {
 		$active = $mapping->is_active();
 		if ( $active ) {
 			return esc_html__( 'Active', 'mercator' );

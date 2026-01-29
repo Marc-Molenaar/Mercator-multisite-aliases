@@ -3,8 +3,9 @@
 namespace Mercator\Multinetwork;
 
 use Mercator\Network_Mapping;
+use WP_Network;
+use WP_Site;
 
-// Add in to Mercator load
 add_action( 'mercator_load', __NAMESPACE__ . '\\run_preflight' );
 
 /**
@@ -12,7 +13,7 @@ add_action( 'mercator_load', __NAMESPACE__ . '\\run_preflight' );
  *
  * @return boolean
  */
-function is_enabled() {
+function is_enabled(): bool {
 	/**
 	 * Enable/disable cross-domain single-sign-on capability for multinetwork.
 	 *
@@ -30,22 +31,18 @@ function is_enabled() {
  * Checks that we actually want multinetwork support, then attaches the
  * relevant actions and filters to make it useful.
  */
-function run_preflight() {
+function run_preflight(): void {
 	if ( ! is_enabled() ) {
 		return;
 	}
 
-	// X: There's a problem in the cockpit!
-	// Y: What's that?
-	// X: It's the room at the front of the airplane where they control it, but
-	//    that's not important right now.
 	bootstrap();
 }
 
 /**
  * Attach multinetwork functions into WordPress
  */
-function bootstrap() {
+function bootstrap(): void {
 	add_filter( 'pre_get_site_by_path',    __NAMESPACE__ . '\\check_mappings_for_site',    20, 4 );
 	add_filter( 'pre_get_network_by_path', __NAMESPACE__ . '\\check_mappings_for_network', 10, 2 );
 	add_action( 'muplugins_loaded', __NAMESPACE__ . '\\register_mapped_filters', -10 );
@@ -54,11 +51,11 @@ function bootstrap() {
 /**
  * Check if a domain belongs to a mapped network
  *
- * @param stdClass|null $network Site object if already found, null otherwise
- * @param string        $domain Domain we're looking for
- * @return stdClass|null Site object if already found, null otherwise
+ * @param WP_Site|bool|null $site Site object if already found, null otherwise
+ * @param string            $domain Domain we're looking for
+ * @return WP_Site|bool|null Site object if already found, null otherwise
  */
-function check_mappings_for_site( $site, $domain, $path, $path_segments ) {
+function check_mappings_for_site(WP_Site|bool|null $site, string $domain, string $path, array $path_segments ): WP_Site|bool|null {
 	// Have we already matched? (Allows other plugins to match first)
 	if ( ! empty( $site ) ) {
 		return $site;
@@ -74,14 +71,11 @@ function check_mappings_for_site( $site, $domain, $path, $path_segments ) {
 
 	// Fetch the actual data for the site
 	$mapped_network = $mapping->get_network();
-	if ( empty( $mapped_network ) ) {
-		return $site;
-	}
 
-	// We found a network, now check for the site. Replace mapped domain with
+    // We found a network, now check for the site. Replace mapped domain with
 	// network's original to find.
 	$mapped_domain = $mapping->get_domain();
-	if ( substr( $mapped_domain, 0, 4 ) === 'www.' ) {
+	if ( str_starts_with( $mapped_domain, 'www.' ) ) {
 		$mapped_domain = substr( $mapped_domain, 4 );
 	}
 	$subdomain = substr( $domain, 0, -strlen( $mapped_domain ) );
@@ -92,11 +86,11 @@ function check_mappings_for_site( $site, $domain, $path, $path_segments ) {
 /**
  * Check if a domain has a network mapping available
  *
- * @param stdClass|null $network Site object if already found, null otherwise
- * @param string        $domain Domain we're looking for
- * @return stdClass|null Site object if already found, null otherwise
+ * @param WP_Network|bool|null $network Site object if already found, null otherwise
+ * @param string               $domain Domain we're looking for
+ * @return WP_Network|bool|null Site object if already found, null otherwise
  */
-function check_mappings_for_network( $network, $domain ) {
+function check_mappings_for_network(WP_Network|bool|null $network, string $domain ): WP_Network|bool|null {
 	// Have we already matched? (Allows other plugins to match first)
 	if ( ! empty( $network ) ) {
 		return $network;
@@ -113,11 +107,7 @@ function check_mappings_for_network( $network, $domain ) {
 	// Fetch the actual data for the site
 	$mapped_network = $mapping->get_network();
 
-	if ( empty( $mapped_network ) ) {
-		return $network;
-	}
-
-	// Note: This is only for backwards compatibility with WPMU Domain Mapping,
+    // Note: This is only for backwards compatibility with WPMU Domain Mapping,
 	// do not rely on this constant in new code.
 	defined( 'DOMAIN_MAPPING' ) or define( 'DOMAIN_MAPPING', 1 );
 	return $mapped_network;
@@ -126,7 +116,7 @@ function check_mappings_for_network( $network, $domain ) {
 /**
  * Register filters for URLs, if we've mapped
  */
-function register_mapped_filters() {
+function register_mapped_filters(): void {
 	$current_site = $GLOBALS['current_blog'];
 	$real_domain = $current_site->domain;
 	$domain = $_SERVER['HTTP_HOST'];
@@ -159,7 +149,7 @@ function register_mapped_filters() {
  * @param int|null    $site_id Blog ID, or null for the current blog.
  * @return string Mangled URL
  */
-function mangle_url( $url, $path, $orig_scheme, $site_id ) {
+function mangle_url( string $url, string $path, ?string $orig_scheme, ?int $site_id ): string {
 	if ( empty( $site_id ) ) {
 		$site_id = get_current_blog_id();
 	}
@@ -167,7 +157,7 @@ function mangle_url( $url, $path, $orig_scheme, $site_id ) {
 	$current_mapping = $GLOBALS['mercator_current_network_mapping'];
 	$current_network = get_current_site();
 
-	if ( empty( $current_mapping ) || (int) $current_network->id !== (int) $current_mapping->get_network_id() ) {
+	if ( empty( $current_mapping ) || $current_network->id !== (int) $current_mapping->get_network_id() ) {
 		return $url;
 	}
 
@@ -177,16 +167,14 @@ function mangle_url( $url, $path, $orig_scheme, $site_id ) {
 	$domain = parse_url( $url, PHP_URL_HOST );
 	$regex = '#(://|\.)' . preg_quote( $mapped_network->domain, '#' ) . '$#i';
 	$mapped_domain = $current_mapping->get_domain();
-	if ( substr( $mapped_domain, 0, 4 ) === 'www.' ) {
+	if ( str_starts_with( $mapped_domain, 'www.' ) ) {
 		$mapped_domain = substr( $mapped_domain, 4 );
 	}
 	$mangled_domain = preg_replace( $regex, '\1' . $mapped_domain, $domain );
 
 	// Then correct the URL
 	$regex = '#^(\w+://)' . preg_quote( $domain, '#' ) . '#i';
-	$mangled = preg_replace( $regex, '\1' . $mangled_domain, $url );
-
-	return $mangled;
+    return preg_replace( $regex, '\1' . $mangled_domain, $url );
 }
 
 /**
@@ -195,12 +183,12 @@ function mangle_url( $url, $path, $orig_scheme, $site_id ) {
  * This will return an array of domains which might have been mapped but also apply to the current domain
  * i.e. a given url of site.network.com should return both site.network.com and network.com
  *
- * @param $domain
+ * @param string $domain
  * @return array
  */
-function get_possible_mapped_domains( $domain ) {
+function get_possible_mapped_domains( string $domain ): array {
 
-	$no_www = ( strpos( $domain, 'www.' ) === 0 ) ? substr( $domain, 4 ) : $domain;
+	$no_www = str_starts_with( $domain, 'www.' ) ? substr( $domain, 4 ) : $domain;
 
 	// Explode domain on tld and return an array element for each explode point
 	// Ensures subdomains of a mapped network are matched
@@ -212,9 +200,7 @@ function get_possible_mapped_domains( $domain ) {
 		$additions[] = 'www.' . $current ;
 	}
 
-	$domains = array_merge( $domains, $additions );
-
-	return $domains;
+    return array_merge( $domains, $additions );
 }
 
 /**
@@ -226,7 +212,7 @@ function get_possible_mapped_domains( $domain ) {
  * @param  int    $segments - Number of segments to explode and return
  * @return array  $domains  - Exploded urls
  */
-function explode_domain( $domain, $segments = 2 ) {
+function explode_domain( string $domain, int $segments = 2 ): array {
 
 	/**
 	 * Filter the number of segments to consider in the domain.
